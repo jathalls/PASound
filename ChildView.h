@@ -28,7 +28,8 @@ public:
 // Implementation
 public:
 	virtual ~CChildView();
-	
+	PortAudioSound *pPortAudioSound;
+	BYTE col;
 
 	// Generated message map functions
 protected:
@@ -37,8 +38,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	PortAudioSound *pPAS;
-	BYTE col;
+	
 protected:
 //	afx_msg LRESULT WM_USER(WPARAM wParam, LPARAM lParam);
 //	afx_msg LRESULT OnUser(WPARAM wParam, LPARAM lParam);

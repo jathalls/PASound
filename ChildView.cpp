@@ -107,27 +107,33 @@ afx_msg LRESULT CChildView::OnUser(WPARAM wParam, LPARAM lParam)
 
 afx_msg LRESULT CChildView::OnWMUser(WPARAM wParam, LPARAM lParam)
 {
+	
 	CDC *pDC = GetDC();
-	if (pPAS->ReadIndex != pPAS->WriteIndex){
+	if (pPortAudioSound->ReadIndex != pPortAudioSound->WriteIndex){
 
 		CRect drawing_Area;
+		GetClientRect(drawing_Area);
+		CString str;
 
 
-		int readIndex = pPAS->ReadIndex;
-		while (pPAS->ppPowSpect[readIndex][0] != 0.0){
+		int readIndex = pPortAudioSound->ReadIndex;
+		while (pPortAudioSound->ppPowSpect[readIndex][0] != 0.0){
 			//display
-			BYTE grey = (BYTE) pPAS->ppPowSpect[readIndex][10];
+			BYTE grey = (BYTE) pPortAudioSound->ppPowSpect[readIndex][10];
 			COLORREF bcolor = RGB(col,col,col);
+			str.Format(L"Display %d 10=%f\n", (int) col, pPortAudioSound->ppPowSpect[readIndex][10]);
+			OutputDebugString(str);
 			col = ++col % 255;
 			CBrush brushbg(bcolor);
 			pDC->FillRect(&drawing_Area, &brushbg);
-			pPAS->ppPowSpect[readIndex][0] = 0.0;
-			readIndex = ++readIndex%pPAS->numBuffers;
-			readIndex = pPAS->ReadIndex;
-			if (readIndex == pPAS->WriteIndex) break;
+			pPortAudioSound->ppPowSpect[readIndex][0] = 0.0;
+			readIndex = ++readIndex%pPortAudioSound->numBuffers;
+			readIndex = pPortAudioSound->ReadIndex;
+			if (readIndex == pPortAudioSound->WriteIndex) break;
 		}
-		pPAS->ReadIndex = readIndex;
+		pPortAudioSound->ReadIndex = readIndex;
 		InvalidateRect(drawing_Area, 1);
+		UpdateWindow();
 	}
 
 	return 0;

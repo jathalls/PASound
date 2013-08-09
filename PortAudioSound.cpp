@@ -215,9 +215,9 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 {
 
 	short *rdr = (short *) input;
-	printf("cb-");
-	if (recordflag){
-		int written = sf_writef_short(outfile, rdr, frameCount);
+	
+	if (recordflag ){
+		int written = (int)sf_writef_short(outfile, rdr, (sf_count_t)frameCount);
 	}
 	//int written=sf_writef_int(outfile, rdr, frameCount);
 	int pos = 0;

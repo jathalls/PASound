@@ -163,7 +163,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (m_PortAudioSound != NULL){
 		m_PortAudioSound->ChildWindowHwnd = m_wndView.m_hWnd;
 	}
-	m_wndView.pPAS = m_PortAudioSound;
+	m_wndView.pPortAudioSound = m_PortAudioSound;
 	m_wndView.col = 0;
 	
 	return 0;
