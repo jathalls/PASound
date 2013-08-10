@@ -22,8 +22,9 @@ protected:
 	void ListDevices();
 	double *FFTin;
 	double *FFTout;
+	double *hamming;
 	fftw_plan FFTplan;
-	
+	void CreateHammingProfile(double *buffer);
 	
 
 public:

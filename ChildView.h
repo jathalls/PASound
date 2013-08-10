@@ -4,9 +4,9 @@
 
 
 #pragma once
-#include "PortAudioSound.h"
+//#include "PortAudioSound.h"
 
-
+class PortAudioSound;
 // CChildView window
 
 class CChildView : public CWnd
@@ -17,7 +17,7 @@ public:
 
 // Attributes
 public:
-
+	PortAudioSound *pPortAudioSound;
 // Operations
 public:
 
@@ -28,8 +28,17 @@ public:
 // Implementation
 public:
 	virtual ~CChildView();
-	PortAudioSound *pPortAudioSound;
+	float offset;
+	float scale;
+	double maxi;
+	double mini;
+
+	
 	BYTE col;
+	int currentColumn;
+	int currentRow;
+
+	
 
 	// Generated message map functions
 protected:

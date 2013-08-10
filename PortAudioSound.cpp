@@ -19,6 +19,8 @@ PortAudioSound::PortAudioSound()
 	
 	FFTin = (double *) fftw_malloc(sizeof(double) * 514);
 	FFTout = (double *) fftw_malloc(sizeof(double) * 512);
+	hamming = (double *) fftw_malloc(sizeof(double) * 512);
+	CreateHammingProfile(hamming);
 	FFTplan = fftw_plan_r2r_1d(512, FFTin, FFTout, FFTW_DHT, FFTW_ESTIMATE);
 	ppPowSpect = (double **) fftw_malloc(sizeof(double *) * numBuffers);
 	for (int i = 0; i < numBuffers; i++){
@@ -75,6 +77,17 @@ PortAudioSound::PortAudioSound()
 
 }
 
+void PortAudioSound::CreateHammingProfile(double *hambuf){
+	double max = 0.0;
+	double alpha = 0.54;
+	double beta = 1 - alpha;
+	for (int i = 0; i < 512; i++){
+		hambuf[i] = alpha - beta*cos((2 * 3.14159 * i) / 511);
+		max = max(max, hambuf[i]);
+	}
+
+}
+
 void PortAudioSound::ListDevices(){
 	const PaDeviceInfo *deviceInfo;
 	int numDevices = Pa_GetDeviceCount();
@@ -118,6 +131,7 @@ PortAudioSound::~PortAudioSound()
 
 	//fftw_free(Pspect);
 	fftw_destroy_plan(FFTplan);
+	fftw_free(hamming);
 	fftw_free(FFTin);
 	fftw_free(FFTout);
 }
@@ -221,10 +235,11 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 	}
 	//int written=sf_writef_int(outfile, rdr, frameCount);
 	int pos = 0;
-	for (int i = 0; i < 4; i++){
-		for (int j = 0; j < 512; j++, pos++){
-			FFTin[j] = (double) rdr[pos];
+	for (int i = 0; i < 8; i++){
+		for (int j = 0; j < 512 && pos<2048; j++, pos++){
+			FFTin[j] = hamming[j]*(double) rdr[pos];
 		}
+		pos = pos - 256;
 		fftw_execute(FFTplan);
 
 		WriteIndex = (WriteIndex + 1)%numBuffers;
@@ -232,8 +247,10 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 		ppPowSpect[WriteIndex][0] = 0.0;
 
 
-		for (int j = 0; j < 512; j++){
-			ppPowSpect[WriteIndex][j + 1] = log10(FFTout[j]);
+		for (int j = 0; j < 256; j++){
+			//ppPowSpect[WriteIndex][j + 1] = log10(FFTout[j]);
+			//ppPowSpect[WriteIndex][j + 1] = (FFTout[j] * FFTout[j]) /2000000.0;
+			ppPowSpect[WriteIndex][j + 1] =log10( .000001+abs(FFTout[j]));
 		}
 
 		ppPowSpect[WriteIndex][0] = 1.0;
