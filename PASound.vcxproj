@@ -61,6 +61,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Mega-Nerd\libsndfile\lib;D:\Downloads\Programming\Sound\fftw-3.3.3-dll32;D:\Downloads\Programming\Sound\pa_stable_v19_20111121\portaudio\build\msvc\Win32\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>portaudio_x86.lib;libfftw3-3.lib;libfftw3f-3.lib;libfftw3l-3.lib;libsndfile-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Profile>true</Profile>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>

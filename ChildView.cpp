@@ -52,6 +52,7 @@ BOOL CChildView::PreCreateWindow(CREATESTRUCT& cs)
 	scale = 1/650000000.0;
 	maxi = 0.0000001;
 	mini = 6500000000.0;
+	isDisplaying = FALSE;
 	return TRUE;
 }
 
@@ -117,62 +118,18 @@ afx_msg LRESULT CChildView::OnUser(WPARAM wParam, LPARAM lParam)
 
 afx_msg LRESULT CChildView::OnWMUser(WPARAM wParam, LPARAM lParam)
 {
-	
-	CDC *pDC = GetDC();
-	
-	if (pPortAudioSound->ReadIndex != pPortAudioSound->WriteIndex){
-
+	if (!isDisplaying){
+		isDisplaying = TRUE;
+		CDC *pDC = GetDC();
 		CRect drawing_Area;
 		GetClientRect(drawing_Area);
-		CString str;
-		
-
-		
-
-
-		int readIndex = pPortAudioSound->ReadIndex;
-		while (pPortAudioSound->ppPowSpect[readIndex][0] != 0.0){
-			//display
-			//BYTE grey = (BYTE) pPortAudioSound->ppPowSpect[readIndex][10];
-			//COLORREF bcolor = RGB(col,col,col);
-			
-			//str.Format(L"Display %d 10=%f\n", (int) col, pPortAudioSound->ppPowSpect[readIndex][10]);
-			//OutputDebugString(str);
-			//col = ++col % 255;
-			//CBrush brushbg(bcolor);
-			//pDC->FillRect(&drawing_Area, &brushbg);
-			
-
-			for (int x = 0; x < 256;x++){
-				if (!isnan(pPortAudioSound->ppPowSpect[readIndex][256 - x])){
-					//if (pPortAudioSound->ppPowSpect[readIndex][256 - x] > max)max = pPortAudioSound->ppPowSpect[readIndex][256 - x];
-					//if (pPortAudioSound->ppPowSpect[readIndex][256 - x] < min)min = pPortAudioSound->ppPowSpect[readIndex][256 - x];
-					maxi = max(pPortAudioSound->ppPowSpect[readIndex][256 - x], maxi);
-					mini = min(pPortAudioSound->ppPowSpect[readIndex][256 - x], mini);
-				}
-				BYTE shade = 256-(BYTE) (((pPortAudioSound->ppPowSpect[readIndex][256 - x]-mini)/maxi)*255.0) ;
-				
-				COLORREF bcolor = RGB(shade, shade, shade);
-				pDC->SetPixel(currentColumn, x+(currentRow*300), bcolor);
-			}
-			currentColumn = ++currentColumn;
-			if (currentColumn >= drawing_Area.Width()){
-				currentColumn = 0;
-				currentRow = ++currentRow % 2;
-			}
-/*			BYTE shaded = (BYTE) (((pPortAudioSound->ppPowSpect[readIndex][256 - 128]-mini)/maxi)*255.0);
-			str.Format(L"at %d  from %f-%f/%f=%f shade=%d\n",currentColumn,pPortAudioSound->ppPowSpect[readIndex][256-128],maxi,mini,
-				(pPortAudioSound->ppPowSpect[readIndex][256-128]-mini)/maxi,shaded);
-			OutputDebugString(str);*/
-
-			pPortAudioSound->ppPowSpect[readIndex][0] = 0.0;
-			readIndex = ++readIndex%pPortAudioSound->numBuffers;
-			readIndex = pPortAudioSound->ReadIndex;
-			if (readIndex == pPortAudioSound->WriteIndex) break;
+		if (pPortAudioSound->DrawSpectrogram(pDC, &drawing_Area)){
+			//if (TRUE){
+			InvalidateRect(drawing_Area, 1);
+			UpdateWindow();
 		}
-		pPortAudioSound->ReadIndex = readIndex;
-		InvalidateRect(drawing_Area, 1);
-		UpdateWindow();
+		ReleaseDC(pDC);
+		isDisplaying = FALSE;
 	}
 
 	return 0;

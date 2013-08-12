@@ -16,6 +16,10 @@ PortAudioSound::PortAudioSound()
 	numBuffers = 16;
 	ReadIndex = 0;
 	WriteIndex = 0;
+	currentColumn = 0;
+	currentRow = 0;
+	maxi = 6.0;
+	mini = -6.0;
 	
 	FFTin = (double *) fftw_malloc(sizeof(double) * 514);
 	FFTout = (double *) fftw_malloc(sizeof(double) * 512);
@@ -189,6 +193,9 @@ int PortAudioSound::StopRecord()
 		recordflag = false;
 		
 		sf_close(outfile);
+		CString str;
+		str.Format(L"Min=%f, Max=%f\n", mini, maxi);
+		logFile.WriteString(str);
 		logFile.WriteString(L"Recording stopped\n");
 	}
 	return 0;
@@ -260,6 +267,62 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 	//SendMessage();
 	PostMessage(ChildWindowHwnd, WM_USER, 0, 0L);
 	return paContinue;
+}
+
+/*
+	DrawSpectrogram - called from the view that is to display the spectrogram
+	passing a *deviceContext for the view and a pointer to the rectangle to drawn
+	into (this function only accesses the width and height of the rectangle)
+
+	The function is part of the PortAudioSound class since it is specifically for
+	use with data held within that class but is called on the UI thread in response to
+	WM_USER message that is Posted to the UI thread from the callback function.
+	*/
+bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
+
+	if (ReadIndex != WriteIndex){
+
+
+		CString str;
+
+
+
+
+
+		int readIndex = ReadIndex;
+		while (ppPowSpect[readIndex][0] != 0.0){
+
+
+
+			for (int x = 0; x < 256; x++){
+				if (!isnan(ppPowSpect[readIndex][256 - x])){
+
+					maxi = max(ppPowSpect[readIndex][256 - x], maxi);
+					mini = min(ppPowSpect[readIndex][256 - x], mini);
+				}
+				BYTE shade = 255 - (BYTE) (((ppPowSpect[readIndex][256 - x] - mini) / maxi)*255.0);
+
+				COLORREF bcolor = RGB(shade, shade, shade);
+				pDC->SetPixel(currentColumn, x + (currentRow * 300), bcolor);
+			}
+			currentColumn = ++currentColumn;
+			if (currentColumn >= pDrawing_area->Width()){
+				currentColumn = 0;
+				currentRow = ++currentRow % 2;
+			}
+
+			ppPowSpect[readIndex][0] = 0.0;
+			ReadIndex = ++readIndex%numBuffers;
+			readIndex = ReadIndex;
+			if (ReadIndex == WriteIndex) break;
+		}
+		ReadIndex = readIndex;
+		//str.Format(L"%d", readIndex);
+		//pDC->TextOutW(10, 280, str);
+		
+		return(TRUE);
+	}
+	return(FALSE);
 }
 
 

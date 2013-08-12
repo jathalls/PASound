@@ -38,6 +38,9 @@ public:
 	int currentColumn;
 	int currentRow;
 
+protected:
+	bool isDisplaying;
+
 	
 
 	// Generated message map functions

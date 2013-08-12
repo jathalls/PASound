@@ -25,6 +25,11 @@ protected:
 	double *hamming;
 	fftw_plan FFTplan;
 	void CreateHammingProfile(double *buffer);
+
+	double mini;
+	double maxi;
+	int currentColumn;
+	int currentRow;
 	
 
 public:
@@ -56,6 +61,8 @@ public:
 		return ((PortAudioSound*) userData)->myMemberCallback(input, output, frameCount, timeInfo, statusFlags);
 	}
 	int myMemberCallback(const void * input, void * output, unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags);
+	bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_Area);
+
 protected:
 	PaStream* pStream;
 	int iSampleRate;
