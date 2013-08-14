@@ -22,6 +22,10 @@ CChildView::CChildView()
 
 CChildView::~CChildView()
 {
+	if (timerID != 0){
+		KillTimer(timerID);
+		timerID = 0;
+	}
 }
 
 
@@ -31,6 +35,8 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 //	ON_MESSAGE(0x0400, &CChildView::WM_USER)
 //	ON_MESSAGE(WM_USER, &CChildView::OnUser)
 ON_MESSAGE(0x0400, &CChildView::OnWMUser)
+ON_WM_KEYUP()
+ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -88,32 +94,7 @@ BOOL CChildView::OnEraseBkgnd(CDC* pDC)
 //	return 0;
 //}
 
-/*
-afx_msg LRESULT CChildView::OnUser(WPARAM wParam, LPARAM lParam)
-{
-	CDC *pDC = GetDC();
-	if (pPAS->ReadIndex != pPAS->WriteIndex){
 
-		CRect drawing_Area;
-		
-		
-		int readIndex = pPAS->ReadIndex;
-		while (pPAS->ppPowSpect[readIndex][0] != 0.0){
-			//display
-			BYTE grey = (BYTE) pPAS->ppPowSpect[readIndex][10];
-			COLORREF bcolor = RGB(grey, grey, grey);
-			CBrush brushbg(bcolor);
-			pDC->FillRect(&drawing_Area, &brushbg);
-			pPAS->ppPowSpect[readIndex][0] = 0.0;
-			readIndex= ++readIndex%pPAS->numBuffers;
-			readIndex = pPAS->ReadIndex;
-			if (readIndex == pPAS->WriteIndex) break;
-		}
-		pPAS->ReadIndex = readIndex;
-	}
-
-	return 0;
-}*/
 
 
 afx_msg LRESULT CChildView::OnWMUser(WPARAM wParam, LPARAM lParam)
@@ -134,3 +115,48 @@ afx_msg LRESULT CChildView::OnWMUser(WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
+
+
+void CChildView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Add your message handler code here and/or call default
+
+	CWnd::OnKeyUp(nChar, nRepCnt, nFlags);
+
+	if (nChar == '4'){
+		timerID = SetTimer(IDT_TIMER_0, 240000, NULL);
+		if (timerID == 0){
+			return;
+		}
+		
+		CDC *pDC = GetDC();
+		CRect drawing_Area;
+		GetClientRect(drawing_Area);
+		pDC->TextOutW(10, 280, L"Recording...");
+
+		ReleaseDC(pDC);
+
+		pPortAudioSound->StartRecord();
+
+		
+	}
+}
+
+void CChildView::OnTimer(UINT TimerVal){
+	if (TimerVal == timerID){
+		pPortAudioSound->StopRecord();
+
+
+
+		KillTimer(TimerVal);
+
+		CDC *pDC = GetDC();
+		CRect drawing_Area;
+		GetClientRect(drawing_Area);
+		pDC->TextOutW(10, 280, L"                    ");
+
+		ReleaseDC(pDC);
+	}
+}
+
+

@@ -28,6 +28,8 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_UPDATE_COMMAND_UI_RANGE(ID_VIEW_APPLOOK_WIN_2000, ID_VIEW_APPLOOK_WINDOWS_7, &CMainFrame::OnUpdateApplicationLook)
 	ON_COMMAND(ID_RECORD_START, &CMainFrame::OnRecordStart)
 	ON_COMMAND(ID_RECORD_STOP, &CMainFrame::OnRecordStop)
+	ON_COMMAND(ID_STREAM_START, &CMainFrame::OnStreamStart)
+	ON_COMMAND(ID_STREAM_STOP, &CMainFrame::OnStreamStop)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -357,5 +359,17 @@ void CMainFrame::OnRecordStart()
 void CMainFrame::OnRecordStop()
 {
 	m_PortAudioSound->StopRecord();
+	
+}
+
+
+void CMainFrame::OnStreamStart()
+{
+	m_PortAudioSound->StartStream();
+}
+
+
+void CMainFrame::OnStreamStop()
+{
 	m_PortAudioSound->StopStream();
 }

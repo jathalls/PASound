@@ -6,6 +6,8 @@
 #pragma once
 //#include "PortAudioSound.h"
 
+#define IDT_TIMER_0	(WM_USER+200)
+
 class PortAudioSound;
 // CChildView window
 
@@ -40,6 +42,9 @@ public:
 
 protected:
 	bool isDisplaying;
+	UINT timerID;
+
+	
 
 	
 
@@ -50,10 +55,16 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 protected:
 //	afx_msg LRESULT WM_USER(WPARAM wParam, LPARAM lParam);
 //	afx_msg LRESULT OnUser(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnWMUser(WPARAM wParam, LPARAM lParam);
+
+
+	afx_msg void OnTimer(UINT TimerVal);
+	// no mor messages after OnTimer please
+public:
+	
 };
 

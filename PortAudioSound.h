@@ -30,6 +30,18 @@ protected:
 	double maxi;
 	int currentColumn;
 	int currentRow;
+
+	bool Processing;
+	long recordedBlocks;
+	
+	bool startRecording;
+	bool overlap;
+	
+
+	int framesPerBuffer;
+	double sampleRate;
+	int FFTSize;
+	int FFTsPerBuffer;
 	
 
 public:
@@ -38,9 +50,16 @@ public:
 
 	HWND ChildWindowHwnd;
 	double **ppPowSpect;
+	BYTE **ppShade;
 	int numBuffers;
 	int ReadIndex;
 	int WriteIndex;
+
+	double startTime;
+	double stopTime;
+
+	CString timeStr;
+
 	// Starts the portaudio stream that was created by the constructor
 	int StartStream();
 	// stops the portaudio stream

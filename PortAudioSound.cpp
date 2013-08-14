@@ -7,7 +7,13 @@ PortAudioSound::PortAudioSound()
 	error(Pa_Initialize());
 	
 	iSampleRate = 192000;
+	sampleRate = (double) iSampleRate;
+	framesPerBuffer = 2048;
+	FFTSize = 512;
+	FFTsPerBuffer = framesPerBuffer/FFTSize;
 	recordflag = false;
+	Processing = FALSE;
+	overlap = FALSE;
 	
 	if (!logFile.Open(L"C:/Bat Recordings/TestFileLog.txt", CFile::modeCreate | CFile::modeWrite | CFile::typeText)){
 		OutputDebugString(L"Unable to open Log File\n");
@@ -21,14 +27,16 @@ PortAudioSound::PortAudioSound()
 	maxi = 6.0;
 	mini = -6.0;
 	
-	FFTin = (double *) fftw_malloc(sizeof(double) * 514);
-	FFTout = (double *) fftw_malloc(sizeof(double) * 512);
-	hamming = (double *) fftw_malloc(sizeof(double) * 512);
+	FFTin = (double *) fftw_malloc(sizeof(double) * (FFTSize+2));
+	FFTout = (double *) fftw_malloc(sizeof(double) * FFTSize);
+	hamming = (double *) fftw_malloc(sizeof(double) * FFTSize);
 	CreateHammingProfile(hamming);
-	FFTplan = fftw_plan_r2r_1d(512, FFTin, FFTout, FFTW_DHT, FFTW_ESTIMATE);
+	FFTplan = fftw_plan_r2r_1d(FFTSize, FFTin, FFTout, FFTW_DHT, FFTW_ESTIMATE);
 	ppPowSpect = (double **) fftw_malloc(sizeof(double *) * numBuffers);
+	ppShade = (BYTE **) fftw_malloc(sizeof(BYTE *) *numBuffers);
 	for (int i = 0; i < numBuffers; i++){
-		ppPowSpect[i] = (double *) fftw_malloc(sizeof(double) * 513);
+		ppPowSpect[i] = (double *) fftw_malloc(sizeof(double) * (FFTSize+1));
+		ppShade[i] = (BYTE *) fftw_malloc(sizeof(BYTE) * (FFTSize + 1));
 	}
 	//FFTplan = fftw_plan_dft_r2c_1d(512, FFTin, FFTout,  FFTW_ESTIMATE);
 	//Pspect = (double *) fftw_malloc(sizeof(double) * 512);
@@ -37,13 +45,13 @@ PortAudioSound::PortAudioSound()
 
 	PaStreamParameters inputParameters;
 
-	inputParameters.device = 9;
+	inputParameters.device = 1;
 	inputParameters.channelCount = 1;
 	inputParameters.sampleFormat = paInt16;
 	
-	inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+	inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultHighInputLatency;
 	inputParameters.hostApiSpecificStreamInfo = NULL;
-	int err = Pa_IsFormatSupported(&inputParameters, NULL, 192000);
+	int err = Pa_IsFormatSupported(&inputParameters, NULL, sampleRate);
 	if (err==0){
 		logFile.WriteString(L"Input format is supported\n");
 	}
@@ -52,20 +60,32 @@ PortAudioSound::PortAudioSound()
 	}
 
 
+	
+	//error(Pa_OpenStream(
+	//	&pStream,
+	//	&inputParameters, /* input channel*/
+	//	NULL, /* output channel*/
+	//	Pa_GetDeviceInfo(inputParameters.device)->defaultSampleRate,
+	//	2048,
+	//	paClipOff,
+	//	&PortAudioSound::myPaCallback,
+	//	this
+	//	));
+		
 
-	error(Pa_OpenStream(
+		error(Pa_OpenStream(
 		&pStream,
 		&inputParameters, /* input channel*/
 		NULL, /* output channel*/
-		Pa_GetDeviceInfo(inputParameters.device)->defaultSampleRate,
-		2048,
+		sampleRate,
+		framesPerBuffer,
 		paClipOff,
 		&PortAudioSound::myPaCallback,
 		this
 		));
 
 	logFile.WriteString(L"Stream opened\n");
-	const PaDeviceInfo* info= Pa_GetDeviceInfo(9);
+	const PaDeviceInfo* info= Pa_GetDeviceInfo(1);
 	CString lf;
 	lf.Format(L"Max Input Channels=%d\n", info->maxInputChannels);
 	logFile.WriteString(lf);
@@ -75,8 +95,7 @@ PortAudioSound::PortAudioSound()
 	logFile.WriteString(lf);
 	lf.Format(L"Default HostApi=%s\n\n",CString((Pa_GetHostApiInfo(info->hostApi)->name)));
 	logFile.WriteString(lf);
-	lf.Format(L"Size of short is:-%d\n", sizeof(short) );
-	logFile.WriteString(lf);
+	
 
 
 }
@@ -85,7 +104,7 @@ void PortAudioSound::CreateHammingProfile(double *hambuf){
 	double max = 0.0;
 	double alpha = 0.54;
 	double beta = 1 - alpha;
-	for (int i = 0; i < 512; i++){
+	for (int i = 0; i < FFTSize; i++){
 		hambuf[i] = alpha - beta*cos((2 * 3.14159 * i) / 511);
 		max = max(max, hambuf[i]);
 	}
@@ -98,7 +117,21 @@ void PortAudioSound::ListDevices(){
 	for (int i = 0; i < numDevices; i++){
 		CString desc = L"";
 		deviceInfo = Pa_GetDeviceInfo(i);
-		desc.Format(L"%d - %s by %s\n", i, CString(deviceInfo->name), CString((Pa_GetHostApiInfo(deviceInfo->hostApi)->name)));
+
+		PaStreamParameters inputParameters;
+
+		inputParameters.device = i;
+		inputParameters.channelCount = 1;
+		inputParameters.sampleFormat = paInt16;
+
+		inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultHighInputLatency;
+		inputParameters.hostApiSpecificStreamInfo = NULL;
+		int err = Pa_IsFormatSupported(&inputParameters, NULL, sampleRate);
+		CString str;
+		if (err == 0) str = "";
+		else str = L"not ";
+
+		desc.Format(L"%d - %s by %s - desired format is %ssupported\n", i, CString(deviceInfo->name), CString((Pa_GetHostApiInfo(deviceInfo->hostApi)->name)),str);
 		logFile.WriteString(desc);
 
 	}
@@ -121,8 +154,10 @@ PortAudioSound::~PortAudioSound()
 	numBuffers = 0;
 	for (int i = 0; i < n; i++){
 		fftw_free(ppPowSpect[i]);
+		fftw_free(ppShade[i]);
 	}
 	fftw_free(ppPowSpect);
+	fftw_free(ppShade);
 	ppPowSpect = NULL;
 
 	if (pStream != NULL){
@@ -144,9 +179,12 @@ PortAudioSound::~PortAudioSound()
 // Starts the portaudio stream that was created by the constructor
 int PortAudioSound::StartStream()
 {
-	int ierr = Pa_StartStream(pStream);
-	error(ierr);
-	logFile.WriteString(L"Stream started\n");
+	int ierr = paNoError;
+	//if (!Pa_IsStreamStopped(pStream)){
+		ierr = Pa_StartStream(pStream);
+		error(ierr);
+		logFile.WriteString(L"Stream started\n");
+	//}
 	return ierr;
 }
 
@@ -168,10 +206,14 @@ int PortAudioSound::StopStream()
 int PortAudioSound::StartRecord()
 {
 	if (!recordflag){
+		startRecording = TRUE;
+		recordedBlocks = 0L;
+		stopTime = -1.0;
 		sfinfo.channels = 1;
 		sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
-		sfinfo.frames = 2048;
-		sfinfo.samplerate = 192000;
+		sfinfo.frames = framesPerBuffer;
+		sfinfo.samplerate = iSampleRate;
+		timeStr = "";
 		
 		outfile = sf_open("c:/bat recordings/testfile.wav", SFM_WRITE, &sfinfo);
 		if (outfile == NULL){
@@ -179,8 +221,10 @@ int PortAudioSound::StartRecord()
 			const char *errstr = sf_error_number(err);
 			logFile.WriteString((LPCWSTR) errstr);
 		}
-		recordflag = true;
 		logFile.WriteString(L"Recording started\n");
+		startTime = (double) Pa_GetStreamTime(pStream);
+		recordflag = true;
+		
 	}
 	return(0);
 }
@@ -189,14 +233,21 @@ int PortAudioSound::StartRecord()
 // stops recording to the file and closes it with appropriate log entries
 int PortAudioSound::StopRecord()
 {
+	
 	if (recordflag){
 		recordflag = false;
-		
+		startRecording = FALSE;
+		stopTime = (double) Pa_GetStreamTime(pStream);
 		sf_close(outfile);
+		
 		CString str;
-		str.Format(L"Min=%f, Max=%f\n", mini, maxi);
+		str.Format(L"Min=%f, Max=%f after recording %ld blocks \n", mini, maxi,recordedBlocks);
 		logFile.WriteString(str);
-		logFile.WriteString(L"Recording stopped\n");
+		str.Format(L"Duration of recording= %f to %f = %f seconds\n",(double)startTime,(double)stopTime, (double)stopTime - (double)startTime);
+		logFile.WriteString(str);
+		logFile.WriteString(L"Recording stopped\n\n");
+		logFile.WriteString(timeStr);
+		Pa_Sleep(2000);
 	}
 	return 0;
 }
@@ -234,38 +285,70 @@ int PortAudioSound::Tune(int offset)
 
 int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags)
 {
+	if (!Processing){
+		Processing = TRUE;
+		double t = Pa_GetStreamTime(pStream);
+		short *rdr = (short *) input;
+		CString tstr;
+	/*	if (startRecording){
+			startRecording = FALSE;
+			startTime = (double)timeInfo->inputBufferAdcTime;
+		}*/
+		if (recordflag){
+			int written = (int) sf_writef_short(outfile, rdr, (sf_count_t) frameCount);
+			recordedBlocks++;
+			tstr.Format(L"%f\n", t);
 
-	short *rdr = (short *) input;
+			timeStr = timeStr + tstr;
+			
+			//stopTime = (double)timeInfo->inputBufferAdcTime;
+		}
+		
+		int pos = 0;
+		int DisplayFramesPerBuffer;
+		if (overlap){
+			DisplayFramesPerBuffer = (FFTsPerBuffer * 2) - 1;
+		}
+		else{
+			DisplayFramesPerBuffer = FFTsPerBuffer;
+		}
+		for (int i = 0; i < (FFTsPerBuffer*2)-1; i++){
+			for (int j = 0; j < FFTSize && pos < framesPerBuffer; j++, pos++){
+				FFTin[j] = hamming[j] * (double) rdr[pos];
+			}
+			if (overlap){// only move the read pointer back for overlap
+				pos = pos - FFTSize / 2;
+			}
+			
+			fftw_execute(FFTplan);
+
+			WriteIndex = (WriteIndex + 1)%numBuffers;
+			if (WriteIndex == ReadIndex) ReadIndex = (++ReadIndex%numBuffers);
+			//ppPowSpect[WriteIndex][0] = 0.0;
+			ppShade[WriteIndex][0] = 0;
+
+
+			for (int j = 0; j < FFTSize/2; j++){
+				//ppPowSpect[WriteIndex][j + 1] = log10(FFTout[j]);
+				//ppPowSpect[WriteIndex][j + 1] = (FFTout[j] * FFTout[j]) /2000000.0;
+				//ppPowSpect[WriteIndex][j + 1] = log10(.000001 + abs(FFTout[j]));
+
+				ppShade[WriteIndex][j + 1] = 255-(BYTE) (((log10(.000001 + abs(FFTout[j]))+6)/6)*255);
+			}
+
+			//ppPowSpect[WriteIndex][0] = 1.0;
+			ppShade[WriteIndex][0] = 1;
+
+		}
+		//displayWindow.PostMessageW(WM_USER, (WPARAM) WriteIndex);
+		//SendMessage();
+		PostMessage(ChildWindowHwnd, WM_USER, 0, 0L);
+		Processing = FALSE;
+	}
+	else{
+		logFile.WriteString(L"*");
+	}
 	
-	if (recordflag ){
-		int written = (int)sf_writef_short(outfile, rdr, (sf_count_t)frameCount);
-	}
-	//int written=sf_writef_int(outfile, rdr, frameCount);
-	int pos = 0;
-	for (int i = 0; i < 8; i++){
-		for (int j = 0; j < 512 && pos<2048; j++, pos++){
-			FFTin[j] = hamming[j]*(double) rdr[pos];
-		}
-		pos = pos - 256;
-		fftw_execute(FFTplan);
-
-		WriteIndex = (WriteIndex + 1)%numBuffers;
-		if (WriteIndex == ReadIndex) ReadIndex = (++ReadIndex%numBuffers);
-		ppPowSpect[WriteIndex][0] = 0.0;
-
-
-		for (int j = 0; j < 256; j++){
-			//ppPowSpect[WriteIndex][j + 1] = log10(FFTout[j]);
-			//ppPowSpect[WriteIndex][j + 1] = (FFTout[j] * FFTout[j]) /2000000.0;
-			ppPowSpect[WriteIndex][j + 1] =log10( .000001+abs(FFTout[j]));
-		}
-
-		ppPowSpect[WriteIndex][0] = 1.0;
-
-	}
-	//displayWindow.PostMessageW(WM_USER, (WPARAM) WriteIndex);
-	//SendMessage();
-	PostMessage(ChildWindowHwnd, WM_USER, 0, 0L);
 	return paContinue;
 }
 
@@ -282,7 +365,7 @@ bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
 
 	if (ReadIndex != WriteIndex){
 
-
+		int bufSize = FFTSize / 2;
 		CString str;
 
 
@@ -290,19 +373,20 @@ bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
 
 
 		int readIndex = ReadIndex;
-		while (ppPowSpect[readIndex][0] != 0.0){
+		//while (ppPowSpect[readIndex][0] != 0.0){
+		while (ppShade[readIndex][0]!=0){
 
 
 
-			for (int x = 0; x < 256; x++){
-				if (!isnan(ppPowSpect[readIndex][256 - x])){
+			for (int x = 0; x < bufSize; x++){
+				
 
-					maxi = max(ppPowSpect[readIndex][256 - x], maxi);
-					mini = min(ppPowSpect[readIndex][256 - x], mini);
-				}
-				BYTE shade = 255 - (BYTE) (((ppPowSpect[readIndex][256 - x] - mini) / maxi)*255.0);
+					//maxi = max(ppPowSpect[readIndex][bufSize - x], maxi);
+					//mini = min(ppPowSpect[readIndex][bufSize - x], mini);
+				
+				//BYTE shade = 255 - (BYTE) (((ppPowSpect[readIndex][bufSize - x] +6.0) / 6.0)*255.0);
 
-				COLORREF bcolor = RGB(shade, shade, shade);
+				COLORREF bcolor = RGB(ppShade[readIndex][bufSize - x], ppShade[readIndex][bufSize - x], ppShade[readIndex][bufSize - x]);
 				pDC->SetPixel(currentColumn, x + (currentRow * 300), bcolor);
 			}
 			currentColumn = ++currentColumn;
@@ -311,7 +395,8 @@ bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
 				currentRow = ++currentRow % 2;
 			}
 
-			ppPowSpect[readIndex][0] = 0.0;
+			//ppPowSpect[readIndex][0] = 0.0;
+			ppShade[readIndex][0] = 0;
 			ReadIndex = ++readIndex%numBuffers;
 			readIndex = ReadIndex;
 			if (ReadIndex == WriteIndex) break;

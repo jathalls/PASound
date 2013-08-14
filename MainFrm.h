@@ -60,6 +60,8 @@ protected:
 public:
 	afx_msg void OnRecordStart();
 	afx_msg void OnRecordStop();
+	afx_msg void OnStreamStart();
+	afx_msg void OnStreamStop();
 };
 
 
