@@ -55,5 +55,7 @@ protected:
 //	afx_msg LRESULT WM_USER(WPARAM wParam, LPARAM lParam);
 //	afx_msg LRESULT OnUser(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnWMUser(WPARAM wParam, LPARAM lParam);
+public:
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 };
 

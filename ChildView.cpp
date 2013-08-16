@@ -31,6 +31,7 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 //	ON_MESSAGE(0x0400, &CChildView::WM_USER)
 //	ON_MESSAGE(WM_USER, &CChildView::OnUser)
 ON_MESSAGE(0x0400, &CChildView::OnWMUser)
+ON_WM_KEYUP()
 END_MESSAGE_MAP()
 
 
@@ -133,4 +134,23 @@ afx_msg LRESULT CChildView::OnWMUser(WPARAM wParam, LPARAM lParam)
 	}
 
 	return 0;
+}
+
+
+void CChildView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Add your message handler code here and/or call default
+	if(isdigit(nChar)){
+		if(nChar!='0'){
+			pPortAudioSound->StartStream();
+			switch(nChar){
+			case '1': pPortAudioSound->RecordMinutes(1); break;
+			case '2': pPortAudioSound->RecordMinutes(2); break;
+			case '4':pPortAudioSound->RecordMinutes(4);break;
+			default: pPortAudioSound->RecordMinutes(1);break;
+			}
+		}
+	}
+
+	CWnd::OnKeyUp(nChar, nRepCnt, nFlags);
 }

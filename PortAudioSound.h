@@ -30,6 +30,10 @@ protected:
 	double maxi;
 	int currentColumn;
 	int currentRow;
+
+	double startTime;
+	double endTime;
+	bool timed;
 	
 
 public:

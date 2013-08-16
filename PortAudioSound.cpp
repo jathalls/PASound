@@ -37,7 +37,7 @@ PortAudioSound::PortAudioSound()
 
 	PaStreamParameters inputParameters;
 
-	inputParameters.device = 9;
+	inputParameters.device = 1;
 	inputParameters.channelCount = 1;
 	inputParameters.sampleFormat = paInt16;
 	
@@ -57,7 +57,7 @@ PortAudioSound::PortAudioSound()
 		&pStream,
 		&inputParameters, /* input channel*/
 		NULL, /* output channel*/
-		Pa_GetDeviceInfo(inputParameters.device)->defaultSampleRate,
+		192000.0,
 		2048,
 		paClipOff,
 		&PortAudioSound::myPaCallback,
@@ -65,7 +65,7 @@ PortAudioSound::PortAudioSound()
 		));
 
 	logFile.WriteString(L"Stream opened\n");
-	const PaDeviceInfo* info= Pa_GetDeviceInfo(9);
+	const PaDeviceInfo* info= Pa_GetDeviceInfo(1);
 	CString lf;
 	lf.Format(L"Max Input Channels=%d\n", info->maxInputChannels);
 	logFile.WriteString(lf);
@@ -205,7 +205,15 @@ int PortAudioSound::StopRecord()
 // Records to a file for the specified number of minutes, with appropriate log entries
 int PortAudioSound::RecordMinutes(int minutes)
 {
-	return 0;
+	if(pStream!=NULL){
+		StartStream();
+		startTime=Pa_GetStreamTime(pStream);
+		endTime=startTime+240.0;
+		timed=TRUE;
+	
+
+	}
+	return(minutes);
 }
 
 
@@ -239,6 +247,13 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 	
 	if (recordflag ){
 		int written = (int)sf_writef_short(outfile, rdr, (sf_count_t)frameCount);
+		if(timed){
+			if(Pa_GetStreamTime(pStream)>endTime){
+				StopRecord();
+				return(paContinue);
+			}
+
+		}
 	}
 	//int written=sf_writef_int(outfile, rdr, frameCount);
 	int pos = 0;
@@ -295,12 +310,13 @@ bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
 
 
 			for (int x = 0; x < 256; x++){
-				if (!isnan(ppPowSpect[readIndex][256 - x])){
+				
+				//if (!isnan(ppPowSpect[readIndex][256 - x])){
 
-					maxi = max(ppPowSpect[readIndex][256 - x], maxi);
-					mini = min(ppPowSpect[readIndex][256 - x], mini);
-				}
-				BYTE shade = 255 - (BYTE) (((ppPowSpect[readIndex][256 - x] - mini) / maxi)*255.0);
+					//maxi = max(ppPowSpect[readIndex][256 - x], maxi);
+					//mini = min(ppPowSpect[readIndex][256 - x], mini);
+				//}
+				BYTE shade = 255 - (BYTE) (((ppPowSpect[readIndex][256 - x] +6.0) /6.0)*255.0);
 
 				COLORREF bcolor = RGB(shade, shade, shade);
 				pDC->SetPixel(currentColumn, x + (currentRow * 300), bcolor);
