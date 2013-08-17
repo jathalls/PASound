@@ -27,6 +27,8 @@ PortAudioSound::PortAudioSound()
 	maxi = 6.0;
 	mini = -6.0;
 	
+	SetBDFrequency(40000);
+	
 	FFTin = (double *) fftw_malloc(sizeof(double) * (FFTSize+2));
 	FFTout = (double *) fftw_malloc(sizeof(double) * FFTSize);
 	hamming = (double *) fftw_malloc(sizeof(double) * FFTSize);
@@ -281,10 +283,25 @@ int PortAudioSound::Tune(int offset)
 }
 
 
+double PortAudioSound::SetBDFrequency(double desiredFrequency){
+	BDFrequency = desiredFrequency;
+	double samplePeriod = 1.0 / sampleRate;
+	int periodRatio = (int) ((1 / BDFrequency) / samplePeriod);
+	BDActualFrequency = 1.0 / (periodRatio*samplePeriod);
 
+	BDPos =  (short int) (BDFrequency*(FFTSize / 2) / (sampleRate/2));
+	BDPosPlus = BDPos + (5000 * FFTSize / 2) / (sampleRate/2);
+	BDPosMinus = BDPos - (5000 * FFTSize / 2) / (sampleRate/2);
+	//BDPos = (FFTSize / 2) - BDPos;
+	////BDPosPlus = (FFTSize / 2) - BDPosPlus;
+	//BDPosMinus = (FFTSize / 2) - BDPosMinus;
+
+	return(BDActualFrequency);
+}
 
 int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags)
 {
+
 	if (!Processing){
 		Processing = TRUE;
 		double t = Pa_GetStreamTime(pStream);
@@ -349,7 +366,7 @@ int PortAudioSound::myMemberCallback(const void * input, void * output, unsigned
 		logFile.WriteString(L"*");
 	}
 	
-	return paContinue;
+	return 0;
 }
 
 /*
@@ -389,9 +406,15 @@ bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_area){
 				COLORREF bcolor = RGB(ppShade[readIndex][bufSize - x], ppShade[readIndex][bufSize - x], ppShade[readIndex][bufSize - x]);
 				pDC->SetPixel(currentColumn, x + (currentRow * 300), bcolor);
 			}
-			currentColumn = ++currentColumn;
-			if (currentColumn >= pDrawing_area->Width()){
+			
+			if (++currentColumn >= pDrawing_area->Width()){
 				currentColumn = 0;
+				pDC->FillSolidRect(0, (FFTSize/2)-BDPos + (currentRow * 300), pDrawing_area->Width(), 1, RGB(255, 0, 0));
+				pDC->FillSolidRect(0, (FFTSize / 2) - BDPosPlus + (currentRow * 300), pDrawing_area->Width(), 1, RGB(0, 255, 0));
+				pDC->FillSolidRect(0, (FFTSize / 2) - BDPosMinus + (currentRow * 300), pDrawing_area->Width(), 1, RGB(0, 255, 0));
+				//pDC->MoveTo(0, BDPos + (currentRow * 300));
+				//pDC->LineTo(pDrawing_area->Width, BDPos + (currentRow * 300));
+
 				currentRow = ++currentRow % 2;
 			}
 

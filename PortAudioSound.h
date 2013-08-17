@@ -55,6 +55,11 @@ public:
 	int ReadIndex;
 	int WriteIndex;
 
+	double BDFrequency;
+	double BDActualFrequency;
+	double SetBDFrequency(double desiredFrequency);
+	short int BDPos, BDPosPlus, BDPosMinus;
+
 	double startTime;
 	double stopTime;
 
@@ -82,8 +87,17 @@ public:
 	int myMemberCallback(const void * input, void * output, unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags);
 	bool PortAudioSound::DrawSpectrogram(CDC *pDC,CRect *pDrawing_Area);
 
+	
+
+
 protected:
 	PaStream* pStream;
 	int iSampleRate;
+
+	
+
+	
+	
 };
+
 
